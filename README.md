@@ -35,3 +35,62 @@ CI/CD is automated with GitHub Actions.
 - Git & a GitHub account  
 - An existing AWS SSH keypair (for EC2)  
 
+---
+
+## 🚀 Running Locally with Docker
+
+1.  **Clone the repository:**  
+    ```bash
+    git clone <repository-url>
+    cd document-manager
+    ```
+
+2.  **Set up environment variables:**  
+    Copy the `.env.example` files in both the `backend` and `frontend` directories to `.env` and customize them as needed.  
+    ```bash
+    cp backend/.env.example backend/.env
+    cp frontend/.env.example frontend/.env
+    ```
+
+3.  **Build and run the containers:**  
+    ```bash
+    docker-compose up --build
+    ```  
+    The application will be available at `http://localhost`.
+
+---
+
+## 📚 Technical Documentation
+
+### Backend
+
+The backend is a Node.js/Express application that handles user authentication, file management, and API requests.
+
+**API Endpoints:**
+
+*   **Auth:** `POST /api/auth/signup`, `POST /api/auth/login`
+*   **Files:** `GET /api/files`, `POST /api/files/upload`, `GET /api/files/:id`, `DELETE /api/files/:id`
+*   **Folders:** `GET /api/folders`, `POST /api/folders`
+*   **Shares:** `GET /api/shares`, `POST /api/shares`
+*   **Tags:** `GET /api/tags`, `POST /api/tags`
+*   **Comments:** `GET /api/comments`, `POST /api/comments`
+
+### Frontend
+
+The frontend is a React application built with Vite that provides the user interface for interacting with the document manager.
+
+**Component Structure:**
+
+*   `App.jsx`: Main application component.
+*   `Folders.jsx`: Component for managing folders.
+*   `Comments.jsx`: Component for handling comments on documents.
+*   `Tags.jsx`: Component for managing tags.
+*   `ActivityLog.jsx`: Displays user activity.
+*   `Notifications.jsx`: Shows notifications.
+*   `Share.jsx`: Handles file sharing.
+*   `Trash.jsx`: Manages deleted files.
+*   `VersionHistory.jsx`: Shows file version history.
+
+### Database
+
+The application uses a PostgreSQL database to store user data, file metadata, and other application-related information. The schema is defined in `backend/src/schema.sql`.
