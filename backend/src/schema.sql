@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY,email TEXT UNIQUE NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'viewer',twofa_secret TEXT,created_at TIMESTAMP DEFAULT now());
+CREATE TABLE IF NOT EXISTS folders (id SERIAL PRIMARY KEY,name TEXT NOT NULL,parent_id INTEGER REFERENCES folders(id) ON DELETE CASCADE,owner_id INTEGER REFERENCES users(id),created_at TIMESTAMP DEFAULT now());
+CREATE TABLE IF NOT EXISTS documents (id SERIAL PRIMARY KEY,folder_id INTEGER REFERENCES folders(id) ON DELETE SET NULL,owner_id INTEGER REFERENCES users(id),name TEXT NOT NULL,current_version INTEGER DEFAULT 1,thumb_key TEXT,deleted_at TIMESTAMP,created_at TIMESTAMP DEFAULT now());
+CREATE TABLE IF NOT EXISTS document_versions (id SERIAL PRIMARY KEY,document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,version INTEGER NOT NULL,s3_key TEXT NOT NULL,size_bytes BIGINT,mime_type TEXT,uploaded_by INTEGER REFERENCES users(id),created_at TIMESTAMP DEFAULT now(),UNIQUE(document_id, version));
+CREATE TABLE IF NOT EXISTS tags (id SERIAL PRIMARY KEY,name TEXT UNIQUE NOT NULL);
+CREATE TABLE IF NOT EXISTS document_tags (document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,tag_id INTEGER REFERENCES tags(id) ON DELETE CASCADE,PRIMARY KEY(document_id, tag_id));
+CREATE TABLE IF NOT EXISTS shares (id SERIAL PRIMARY KEY,document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,shared_with INTEGER REFERENCES users(id),permission TEXT NOT NULL DEFAULT 'view',link_token TEXT,expires_at TIMESTAMP,created_at TIMESTAMP DEFAULT now());
+CREATE TABLE IF NOT EXISTS comments (id SERIAL PRIMARY KEY,document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,user_id INTEGER REFERENCES users(id),body TEXT NOT NULL,created_at TIMESTAMP DEFAULT now());
+CREATE TABLE IF NOT EXISTS activity_logs (id SERIAL PRIMARY KEY,user_id INTEGER REFERENCES users(id),action TEXT,entity TEXT,entity_id INTEGER,details JSONB,created_at TIMESTAMP DEFAULT now());
+CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY,user_id INTEGER REFERENCES users(id),type TEXT,message TEXT,payload JSONB,read_at TIMESTAMP,created_at TIMESTAMP DEFAULT now());

@@ -1,0 +1,18 @@
+const express=require('express'); const multer=require('multer'); const db=require('../db'); const {requireAuth}=require('../middleware/auth'); const {putObject,signGet}=require('../utils/s3'); const {logActivity}=require('../utils/activity'); const router=express.Router(); const upload=multer();
+router.get('/',requireAuth,async(req,res)=>{ const {q=null,tag=null,folder_id=null,fts=null}=req.query; let sql=`SELECT d.*, (SELECT COUNT(*) FROM document_versions v WHERE v.document_id=d.id) versions FROM documents d WHERE d.deleted_at IS NULL AND owner_id=$1`; const params=[req.user.id];
+  if(folder_id){ params.push(folder_id); sql+=` AND d.folder_id=$${params.length}`; } if(q){ params.push('%'+q+'%'); sql+=` AND d.name ILIKE $${params.length}`; }
+  if(tag){ params.push(tag); sql+=` AND EXISTS (SELECT 1 FROM document_tags dt JOIN tags t ON t.id=dt.tag_id WHERE dt.document_id=d.id AND t.name=$${params.length})`; }
+  if(fts){ params.push(fts); sql+=` AND EXISTS (SELECT 1 FROM document_versions WHERE document_id=d.id AND content @@ to_tsquery($${params.length}))`; }
+  sql+=' ORDER BY d.id DESC'; const r=await db.query(sql,params); res.json(r.rows); });
+router.post('/upload',requireAuth,upload.single('file'),async(req,res)=>{ const {folder_id=null,name=null,document_id=null}=req.body; if(!req.file) return res.status(400).json({error:'Missing file'});
+  if(document_id){ const dr=await db.query('SELECT * FROM documents WHERE id=$1 AND owner_id=$2',[document_id,req.user.id]); if(!dr.rows.length) return res.status(404).json({error:'Doc not found'});
+    const doc=dr.rows[0]; const v=(doc.current_version||1)+1; const key=`uploads/${doc.id}/v${v}/${Date.now()}_${req.file.originalname}`; await putObject(process.env.S3_BUCKET,key,req.file.buffer,req.file.mimetype);
+    await db.query('INSERT INTO document_versions(document_id,version,s3_key,size_bytes,mime_type,uploaded_by) VALUES($1,$2,$3,$4,$5,$6)',[doc.id,v,key,req.file.size,req.file.mimetype,req.user.id]);
+    await db.query('UPDATE documents SET current_version=$1 WHERE id=$2',[v,doc.id]); await logActivity(req.user.id,'upload_version','document',doc.id,{version:v}); return res.status(201).json({document_id:doc.id,version:v}); }
+  const nameFinal=name||req.file.originalname; const dcr=await db.query('INSERT INTO documents(folder_id,owner_id,name) VALUES($1,$2,$3) RETURNING *',[folder_id,req.user.id,nameFinal]);
+  const doc=dcr.rows[0]; const key=`uploads/${doc.id}/v1/${Date.now()}_${req.file.originalname}`; await putObject(process.env.S3_BUCKET,key,req.file.buffer,req.file.mimetype);
+  await db.query('INSERT INTO document_versions(document_id,version,s3_key,size_bytes,mime_type,uploaded_by) VALUES($1,$2,$3,$4,$5,$6)',[doc.id,1,key,req.file.size,req.file.mimetype,req.user.id]); await db.query('UPDATE documents SET current_version=1 WHERE id=$1',[doc.id]); await logActivity(req.user.id,'upload','document',doc.id,{name:nameFinal}); return res.status(201).json(doc); });
+router.get('/:id/download',requireAuth,async(req,res)=>{ const r=await db.query('SELECT * FROM document_versions WHERE document_id=$1 ORDER BY version DESC LIMIT 1',[req.params.id]); if(!r.rows.length) return res.status(404).json({error:'No version'}); const url=await signGet(process.env.S3_BUCKET,r.rows[0].s3_key,300); res.json({url}); });
+router.delete('/:id',requireAuth,async(req,res)=>{ await db.query('UPDATE documents SET deleted_at=now() WHERE id=$1 AND owner_id=$2',[req.params.id,req.user.id]); res.json({ok:true}); });
+router.post('/:id/restore',requireAuth,async(req,res)=>{ await db.query('UPDATE documents SET deleted_at=NULL WHERE id=$1 AND owner_id=$2',[req.params.id,req.user.id]); res.json({ok:true}); });
+module.exports=router;

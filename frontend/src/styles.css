@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.btn {
+  @apply px-3 py-2 rounded bg-brand-500 hover:opacity-90 text-white text-sm;
+}
+.btn-secondary {
+  @apply px-3 py-2 rounded bg-zinc-700 hover:bg-zinc-600 text-white text-sm;
+}
+.input {
+  @apply w-full px-3 py-2 rounded bg-zinc-900 border border-zinc-700 text-sm;
+}
+.card {
+  @apply bg-zinc-900 border border-zinc-800 rounded-lg p-4;
+}
+.badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded bg-zinc-800 text-xs;
+}
+
+@media (max-width: 640px) {
+  .grid-cols-3 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+  .flex {
+    flex-direction: column;
+  }
+}

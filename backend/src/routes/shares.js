@@ -1,0 +1,4 @@
+const express=require('express'); const crypto=require('crypto'); const db=require('../db'); const {requireAuth}=require('../middleware/auth'); const router=express.Router();
+router.post('/link',requireAuth,async(req,res)=>{ const {document_id,permission='view',expires_at=null}=req.body||{}; const token=crypto.randomBytes(16).toString('hex'); const r=await db.query('INSERT INTO shares(document_id,link_token,permission,expires_at) VALUES($1,$2,$3,$4) RETURNING *',[document_id,token,permission,expires_at]); res.status(201).json({...r.rows[0],url:`/shares/access/${token}`}); });
+router.get('/access/:token',async(req,res)=>{ const r=await db.query('SELECT * FROM shares WHERE link_token=$1',[req.params.token]); if(!r.rows.length) return res.status(404).json({error:'Invalid link'}); res.json(r.rows[0]); });
+module.exports=router;
